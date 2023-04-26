@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Clips</h1>
+
+    <ul id="clips">
+    </ul>
+
+    <div class="editor">
+        <!-- <canvas id="videoCanvas" width="400px"></canvas>
+        <p id="videoLength">Video Length</p> -->
+
+        <video id="videoPlayer" width="1000"></video>
+
+        <label class="rangeSlider">
+            <input onchange="javascript:handleSubmit()" type="range" value="0" min="0" id="inputRange"/>
+            <div class="fakeThumb"></div>
+        </label>
+
+        <div>
+            <button onclick="handleVideoState()">></button>
+            <button onclick="handleVideoState()">||</button>
+            <button onclick="handleTrim()">Trim Video</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedClip = '';
+        let videoState = false;
+        const list = document.getElementById('clips');
+
+        fetch('http://localhost:3000/clips').then((res) => res.json()).then((data) => {
+            data.map((clip) => {
+                const item = document.createElement('li');
+                item.appendChild(document.createTextNode(`${clip.name} -> ${clip.path}`))
+                item.onclick = () => selectVideo(clip);
+
+                list.appendChild(item);
+            })
+        });
+
+        function selectVideo(clip) {
+            const videoPlayer = document.getElementById('videoPlayer');
+            // const videoCanvas = document.getElementById('videoCanvas')
+            // const canvasContext = videoCanvas.getContext('2d');
+            const videoSource = document.createElement('source');
+
+            videoSource.setAttribute('src', `/clips/${clip.name}`);
+            videoSource.setAttribute('type', 'video/mp4');
+
+            videoPlayer.appendChild(videoSource);
+            videoPlayer.load();
+            videoState = true;
+            videoPlayer.volume = 0.2;
+
+            selectedClip = clip.name;
+
+            console.log(selectedClip);
+
+            // Load metadata of the video to get video duration and dimensions
+            videoPlayer.addEventListener('loadedmetadata', function() {
+                // Set canvas dimensions same as video dimensions
+                // videoCanvas.width = 400;
+                // videoCanvas.height = 225;
+                
+                const minutes = parseInt(videoPlayer.duration / 60, 10);
+                const seconds = minutes * 60;
+
+                // const videoLength = document.getElementById('videoLength');
+                const inputRange = document.getElementById('inputRange');
+                inputRange.setAttribute('max', seconds);
+                // videoLength.textContent = `Video Length: ${minutes}min - ${seconds}sec`;
+            });
+
+            videoPlayer.addEventListener('canplay', function() {
+                // videoCanvas.style.display = 'inline';
+                // canvasContext.drawImage(videoPlayer, 0, 0, 400, 225);
+            });
+        }
+
+        function scrubVideo(second) {
+            const videoPlayer = document.getElementById('videoPlayer');
+            videoPlayer.currentTime = second;
+        }
+
+        function handleSubmit() {
+            const rangeSlider = document.getElementById('inputRange');
+            console.log(`Trimming at: ${rangeSlider.value} seconds`);
+            scrubVideo(rangeSlider.value);
+        }
+
+        function handleVideoState() {
+            const videoPlayer = document.getElementById('videoPlayer');
+
+            if (videoState) {
+                videoPlayer.play();
+            } else {
+                videoPlayer.pause();
+            }
+
+            videoState = !videoState;
+        }
+
+        function handleTrim() {
+            const options = {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({clipName: selectedClip})
+            }
+
+            fetch('http://localhost:3000/trim', options).then((res) => res.json()).then((data) => console.log(data))
+        }
+    </script>
+</body>
+</html>
